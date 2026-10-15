@@ -1,0 +1,6 @@
+{
+  "name": "Vision3D - Manufacturing Product 2D to 3D Studio",
+  "description": "Convert multi-angle manufacturing drawings, engineering blueprints, and product snapshots into interactive 3D solid CAD meshes, printable STLs, and dimensioned models using Computer Vision.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
