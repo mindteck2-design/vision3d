@@ -18,6 +18,8 @@ import type { ProcessOptions, CVStats } from '../types/index.ts';
 
 export const apiRouter = Router();
 
+const CAD_SERVICE_URL = process.env.CAD_SERVICE_URL || 'http://127.0.0.1:8000';
+
 // Universal safe JSON sender that works in Express, Connect, or raw Node ServerResponse
 export function sendJson(res: any, status: number, data: any) {
   if (typeof res.status === 'function' && typeof res.json === 'function') {
@@ -28,22 +30,90 @@ export function sendJson(res: any, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
+async function probeCadService(): Promise<{ online: boolean; details?: any }> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 1500);
+    const r = await fetch(`${CAD_SERVICE_URL}/health`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) return { online: false };
+    const details = await r.json();
+    return { online: true, details };
+  } catch {
+    return { online: false };
+  }
+}
+
 // Health check endpoint
-apiRouter.get('/health', (req, res) => {
+apiRouter.get('/health', async (req, res) => {
+  const cad = await probeCadService();
+  const capabilities = [
+    'legacy_relief_heightfield',
+    'sobel_gradient_filtering',
+    'euclidean_distance_transform',
+    'cad_stl_obj_generation',
+  ];
+  if (cad.online) {
+    capabilities.unshift(
+      'parametric_cad_reconstruction',
+      'svg_dimension_parse',
+      'constraint_solve',
+      'multi_view_drawing_fusion'
+    );
+  }
   sendJson(res, 200, {
     status: 'ok',
     runtime: `Node.js ${process.version}`,
-    cvLibrary: 'Vision3D Computer Vision Engine (Sobel, EDT, Multi-Cue Depth)',
-    capabilities: [
-      'manufacturing_2d_to_3d',
-      'multi_angle_orthographic_reconstruction',
-      'sobel_gradient_filtering',
-      'euclidean_distance_transform',
-      'normal_vector_synthesis',
-      'cad_stl_obj_generation',
-    ],
+    cvLibrary: cad.online
+      ? 'Vision3D Parametric CAD Service (Python) + legacy relief engine'
+      : 'Vision3D legacy relief engine (CAD service offline)',
+    cadService: {
+      url: CAD_SERVICE_URL,
+      online: cad.online,
+      details: cad.details || null,
+    },
+    capabilities,
     timestamp: new Date().toISOString(),
   });
+});
+
+/** Proxy to Python parametric CAD reconstruction service */
+apiRouter.post('/reconstruct', async (req, res) => {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 120_000);
+    const r = await fetch(`${CAD_SERVICE_URL}/reconstruct`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {}),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    const text = await r.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { error: text || 'Invalid response from CAD service' };
+    }
+    if (!r.ok) {
+      return sendJson(res, r.status >= 400 ? r.status : 502, {
+        error: data.error || data.detail || 'CAD reconstruction failed',
+        cadService: CAD_SERVICE_URL,
+        details: data,
+      });
+    }
+    return sendJson(res, 200, data);
+  } catch (error: any) {
+    console.error('CAD reconstruct proxy error:', error);
+    return sendJson(res, 503, {
+      error:
+        error?.name === 'AbortError'
+          ? 'CAD service timed out'
+          : `CAD service unreachable at ${CAD_SERVICE_URL}. Start: cd python/cad_service && uvicorn app.main:app --port 8000`,
+      cadService: CAD_SERVICE_URL,
+    });
+  }
 });
 
 // Products catalog endpoint
@@ -51,7 +121,7 @@ apiRouter.get('/products', (req, res) => {
   sendJson(res, 200, MANUFACTURING_PRODUCTS);
 });
 
-// Main 2D to 3D CV Processing Endpoint
+// Legacy relief heightfield endpoint (not dimensionally accurate CAD)
 apiRouter.post('/process-cv', (req, res) => {
   try {
     const startTime = Date.now();
@@ -95,6 +165,7 @@ apiRouter.post('/process-cv', (req, res) => {
     }
 
     const cvSteps: string[] = [
+      'LEGACY RELIEF: not parametric CAD — use POST /api/reconstruct for dimensional models',
       `Node.js CV: Processed ${targetRes}x${targetRes} drawing tensor`,
       'Node.js CV: Luminance conversion (Y = 0.299R + 0.587G + 0.114B)',
     ];

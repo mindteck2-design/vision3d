@@ -69,19 +69,21 @@ export const MANUFACTURING_PRODUCTS: ManufacturingProduct[] = [
               <line x1="-110" y1="55" x2="110" y2="55" stroke="#38bdf8" stroke-width="1" />
               <polygon points="-110,55 -102,52 -102,58" fill="#38bdf8" />
               <polygon points="110,55 102,52 102,58" fill="#38bdf8" />
-              <text x="0" y="70" fill="#38bdf8" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle">Ø 140.00 mm</text>
+              <text x="0" y="70" fill="#38bdf8" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle">Outer flange  Ø 140.00 mm</text>
 
               <!-- Dimension: Barrel Ø85 -->
               <line x1="-70" y1="-78" x2="70" y2="-78" stroke="#38bdf8" stroke-width="1" />
               <polygon points="-70,-78 -62,-81 -62,-75" fill="#38bdf8" />
               <polygon points="70,-78 62,-81 62,-75" fill="#38bdf8" />
-              <text x="0" y="-83" fill="#38bdf8" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">Ø 85.00 mm</text>
+              <text x="0" y="-83" fill="#38bdf8" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">Barrel  Ø 85.00 mm</text>
 
               <!-- Dimension: Total Height 75mm -->
               <line x1="125" y1="-95" x2="125" y2="45" stroke="#38bdf8" stroke-width="1" />
               <polygon points="125,-95 122,-87 128,-87" fill="#38bdf8" />
               <polygon points="125,45 122,37 128,37" fill="#38bdf8" />
-              <text x="135" y="-20" fill="#38bdf8" font-family="monospace" font-size="10" font-weight="bold" transform="rotate(90 135 -20)">75.00 mm</text>
+              <text x="135" y="-20" fill="#38bdf8" font-family="monospace" font-size="10" font-weight="bold">Height  75.00 mm</text>
+              <text x="-150" y="-20" fill="#94a3b8" font-family="monospace" font-size="10" font-weight="bold">Bore  Ø 50.00 mm</text>
+              <text x="135" y="35" fill="#38bdf8" font-family="monospace" font-size="10" font-weight="bold">Flange thick  18.00 mm</text>
             </g>
 
             <!-- Top Plan Projection (Bottom Left) -->
@@ -512,6 +514,34 @@ export const MANUFACTURING_PRODUCTS: ManufacturingProduct[] = [
             </g>
           </svg>
         `),
+      },
+    },
+  },
+  {
+    id: 'flanged_sleeve_definition',
+    name: 'Flanged Sleeve (Definition Drawing)',
+    partNumber: 'DEF-26-22',
+    category: 'Sample Upload',
+    materialType: 'Steel',
+    description:
+      'ISO-style multi-view definition drawing (Wikimedia). Flanged sleeve Ø26/Ø22 × 26 with tapered bore Ø19→Ø12.',
+    specifications: {
+      outerDiameterMm: 26,
+      boreDiameterMm: 15.5,
+      totalHeightMm: 26,
+      flangeThicknessMm: 3,
+      boltPattern: 'None',
+      tolerance: 'From drawing',
+      surfaceFinish: 'As reconstructed',
+    },
+    angles: {
+      blueprint_sheet: {
+        key: 'blueprint_sheet',
+        label: 'Definition Drawing',
+        degrees: 'ISO Sheet',
+        description: 'Engineering_drawing-dessin_de_definition.png',
+        // Served from Vite public/samples/
+        dataUrl: '/samples/Engineering_drawing-dessin_de_definition.png',
       },
     },
   },

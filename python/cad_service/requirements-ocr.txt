@@ -1,0 +1,3 @@
+# Optional OCR stack — install separately if needed for raster-only uploads
+paddleocr>=2.7.0
+paddlepaddle>=2.6.0

@@ -2,24 +2,27 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { generate3DGeometryData } from '../cv/engine.ts';
-import type { ProcessOptions, MaterialPreset, MeshMode, ManufacturingProduct } from '../types/index.ts';
-import {
-  RotateCcw,
-  Compass,
-  Eye,
-  Scissors,
-  Ruler,
-  Maximize2,
-} from 'lucide-react';
+import type { ProcessOptions, MaterialPreset, ManufacturingProduct } from '../types/index.ts';
+import { RotateCcw } from 'lucide-react';
 
 interface ThreeCanvasProps {
-  heightfield: number[][]; // [y][x] normalized 0..1
+  heightfield: number[][]; // [y][x] normalized 0..1 — used for legacy relief mode
   options: ProcessOptions;
   product: ManufacturingProduct;
   blueprintUrl?: string;
   normalMapUrl?: string;
   isProcessing?: boolean;
+  /** When set, load parametric CAD STL instead of heightfield mesh */
+  stlBase64?: string | null;
+}
+
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
 }
 
 export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
@@ -29,6 +32,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   blueprintUrl,
   normalMapUrl,
   isProcessing = false,
+  stlBase64 = null,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -47,11 +51,11 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
   const blueprintTextureRef = useRef<THREE.Texture | null>(null);
   const normalTextureRef = useRef<THREE.Texture | null>(null);
 
-  const [wireframe, setWireframe] = useState<boolean>(false);
-  const [autoRotate, setAutoRotate] = useState<boolean>(false);
-  const [sliceEnabled, setSliceEnabled] = useState<boolean>(false);
-  const [sliceOffset, setSliceOffset] = useState<number>(0);
-  const [showDimensions, setShowDimensions] = useState<boolean>(true);
+  const [wireframe] = useState<boolean>(false);
+  const [autoRotate] = useState<boolean>(false);
+  const [sliceEnabled] = useState<boolean>(false);
+  const [sliceOffset] = useState<number>(0);
+  const [showDimensions] = useState<boolean>(false);
 
   const autoRotateRef = useRef(autoRotate);
   autoRotateRef.current = autoRotate;
@@ -331,20 +335,46 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     }
   }, [createMaterial, options.materialPreset]);
 
-  // Update 3D Geometry
+  // Update 3D Geometry — parametric STL preferred over heightfield relief
   useEffect(() => {
     const meshGroup = meshGroupRef.current;
-    if (!meshGroup || !heightfield || heightfield.length === 0) return;
+    if (!meshGroup) return;
 
-    while (meshGroup.children.length > 0) {
-      const child = meshGroup.children[0];
-      if (child instanceof THREE.Mesh || child instanceof THREE.Points) {
-        child.geometry.dispose();
-        if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
-        else child.material.dispose();
+    const clearGroup = () => {
+      while (meshGroup.children.length > 0) {
+        const child = meshGroup.children[0];
+        if (child instanceof THREE.Mesh || child instanceof THREE.Points) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose());
+          else child.material.dispose();
+        }
+        meshGroup.remove(child);
       }
-      meshGroup.remove(child);
+    };
+
+    if (stlBase64) {
+      clearGroup();
+      try {
+        const loader = new STLLoader();
+        const geom = loader.parse(base64ToArrayBuffer(stlBase64));
+        geom.computeVertexNormals();
+        geom.center();
+        // CAD models are Z-up; rotate to match existing viewport (Z out of screen-ish)
+        geom.rotateX(-Math.PI / 2);
+        const mesh = new THREE.Mesh(geom, createMaterial(options.materialPreset));
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        meshGroup.add(mesh);
+        activeMeshRef.current = mesh;
+      } catch (err) {
+        console.error('STL load failed:', err);
+      }
+      return;
     }
+
+    if (!heightfield || heightfield.length === 0) return;
+
+    clearGroup();
 
     const gridH = heightfield.length;
     const gridW = heightfield[0].length;
@@ -422,7 +452,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
 
     meshGroup.add(mesh);
     activeMeshRef.current = mesh;
-  }, [heightfield, options, createMaterial]);
+  }, [heightfield, options, createMaterial, stlBase64]);
 
   // Dimension lines overlay
   useEffect(() => {
@@ -440,23 +470,26 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     if (!showDimensions) return;
 
     const { outerDiameterMm, boreDiameterMm, totalHeightMm } = product.specifications;
+    const od = Number(outerDiameterMm) || 100;
+    const ht = Number(totalHeightMm) || options.depthScale * 35.0 + options.baseThickness;
+    const half = od / 2;
     const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 });
     const textMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
 
-    // 1. Outer Diameter line (along X axis at bottom)
+    // 1. Outer Diameter line (along X axis at bottom) — scaled to specs
     const odPoints = [
-      new THREE.Vector3(-50, -56, 4),
-      new THREE.Vector3(50, -56, 4),
+      new THREE.Vector3(-half, -half - 6, 4),
+      new THREE.Vector3(half, -half - 6, 4),
     ];
     const odGeo = new THREE.BufferGeometry().setFromPoints(odPoints);
     const odLine = new THREE.Line(odGeo, lineMat);
     dimGroup.add(odLine);
 
     // 2. Total Height Line (along Z axis)
-    const zTop = options.depthScale * 35.0 + options.baseThickness;
+    const zTop = stlBase64 ? ht : options.depthScale * 35.0 + options.baseThickness;
     const hPoints = [
-      new THREE.Vector3(56, 0, 0),
-      new THREE.Vector3(56, 0, zTop),
+      new THREE.Vector3(half + 6, 0, 0),
+      new THREE.Vector3(half + 6, 0, zTop),
     ];
     const hGeo = new THREE.BufferGeometry().setFromPoints(hPoints);
     const hLine = new THREE.Line(hGeo, lineMat);
@@ -484,7 +517,7 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
     const arrowH2 = new THREE.Mesh(coneGeo, tickMat);
     arrowH2.position.set(56, 0, zTop);
     dimGroup.add(arrowH2);
-  }, [showDimensions, product, options.depthScale, options.baseThickness]);
+  }, [showDimensions, product, options.depthScale, options.baseThickness, stlBase64]);
 
   // Clipping plane updates
   useEffect(() => {
@@ -557,175 +590,21 @@ export const ThreeCanvas: React.FC<ThreeCanvasProps> = ({
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm pointer-events-none transition-opacity">
           <div className="flex flex-col items-center gap-3 px-6 py-4 rounded-xl bg-slate-900 border border-cyan-500/30 shadow-2xl">
             <div className="w-8 h-8 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium text-cyan-300 tracking-wide">
-              Reconstructing 3D Manufacturing Geometry...
-            </span>
+            <span className="text-sm text-slate-300">Building 3D model…</span>
           </div>
         </div>
       )}
 
-      {/* Top Floating Viewport HUD: Camera Controls & View Presets */}
-      <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        <div className="flex items-center gap-1.5 pointer-events-auto">
-          <div className="flex items-center bg-slate-900/90 border border-slate-700/60 rounded-lg p-0.5 shadow-lg backdrop-blur">
-            <button
-              onClick={() => setCameraView('isometric')}
-              className="px-2 py-1 text-[11px] font-semibold rounded text-slate-300 hover:text-white hover:bg-slate-800 transition"
-              title="45° Isometric CAD view"
-            >
-              45° Iso
-            </button>
-            <button
-              onClick={() => setCameraView('front')}
-              className="px-2 py-1 text-[11px] font-semibold rounded text-slate-300 hover:text-white hover:bg-slate-800 transition"
-              title="0° Front Elevation view"
-            >
-              0° Front
-            </button>
-            <button
-              onClick={() => setCameraView('top')}
-              className="px-2 py-1 text-[11px] font-semibold rounded text-slate-300 hover:text-white hover:bg-slate-800 transition"
-              title="90° Top Plan view"
-            >
-              90° Top
-            </button>
-            <button
-              onClick={() => setCameraView('side')}
-              className="px-2 py-1 text-[11px] font-semibold rounded text-slate-300 hover:text-white hover:bg-slate-800 transition hidden sm:inline-block"
-              title="90° Side Profile view"
-            >
-              90° Side
-            </button>
-          </div>
-
-          <button
-            onClick={resetView}
-            className="p-1.5 bg-slate-900/90 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition shadow-lg"
-            title="Reset Camera & Rotation"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Top-Right Tools */}
-        <div className="flex items-center gap-1.5 pointer-events-auto">
-          <button
-            onClick={() => setShowDimensions(!showDimensions)}
-            className={`px-2.5 py-1 flex items-center gap-1 rounded-lg border text-[11px] font-medium transition shadow-lg ${
-              showDimensions
-                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-white'
-            }`}
-            title="Toggle 3D Dimension Overlays"
-          >
-            <Ruler className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Dimensions</span>
-          </button>
-
-          <button
-            onClick={() => setSliceEnabled(!sliceEnabled)}
-            className={`px-2.5 py-1 flex items-center gap-1 rounded-lg border text-[11px] font-medium transition shadow-lg ${
-              sliceEnabled
-                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-white'
-            }`}
-            title="Cross-Section Slicing Tool"
-          >
-            <Scissors className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Section Cut</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setWireframe(!wireframe);
-              setTimeout(updateMeshMaterial, 10);
-            }}
-            className={`px-2.5 py-1 flex items-center gap-1 rounded-lg border text-[11px] font-medium transition shadow-lg ${
-              wireframe
-                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
-                : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-white'
-            }`}
-            title="Toggle Wireframe CAD overlay"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Wireframe</span>
-          </button>
-
-          <button
-            onClick={() => setAutoRotate(!autoRotate)}
-            className={`px-2.5 py-1 flex items-center gap-1 rounded-lg border text-[11px] font-medium transition shadow-lg ${
-              autoRotate
-                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-white'
-            }`}
-            title="Toggle Turntable Rotation"
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Turntable</span>
-          </button>
-        </div>
+      <div className="absolute top-3 right-3 z-10">
+        <button
+          type="button"
+          onClick={resetView}
+          className="p-2 bg-slate-900/90 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition shadow"
+          title="Reset view"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
       </div>
-
-      {/* Slicing plane interactive slider banner */}
-      {sliceEnabled && (
-        <div className="absolute top-16 right-4 z-10 w-72 bg-slate-900/95 border border-cyan-500/40 rounded-xl p-3 shadow-xl backdrop-blur">
-          <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-            <span className="font-semibold text-cyan-300 flex items-center gap-1">
-              <Scissors className="w-3.5 h-3.5" /> Cross-Section Slicer
-            </span>
-            <span className="font-mono text-cyan-400">{sliceOffset} mm</span>
-          </div>
-          <input
-            type="range"
-            min={-50}
-            max={50}
-            step={1}
-            value={sliceOffset}
-            onChange={(e) => setSliceOffset(Number(e.target.value))}
-            className="w-full accent-cyan-400 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
-          />
-          <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-            <span>-50 mm</span>
-            <span>Center (0)</span>
-            <span>+50 mm</span>
-          </div>
-        </div>
-      )}
-
-      {/* Mechanical Dimensions Callout HUD */}
-      {showDimensions && (
-        <div className="absolute bottom-28 left-4 z-10 bg-slate-900/95 border border-amber-500/40 rounded-xl p-3 text-xs text-slate-300 shadow-xl backdrop-blur max-w-sm">
-          <div className="font-bold text-amber-400 mb-1.5 flex items-center gap-1.5">
-            <Ruler className="w-4 h-4" /> CAD Engineering Specifications
-          </div>
-          <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
-            <div className="bg-slate-800/80 px-2.5 py-1.5 rounded border border-slate-700/60">
-              <span className="text-slate-400 block text-[9px]">OUTER FLANGE DIA</span>
-              <span className="text-white font-bold">
-                Ø {product.specifications.outerDiameterMm}.00 mm
-              </span>
-            </div>
-            <div className="bg-slate-800/80 px-2.5 py-1.5 rounded border border-slate-700/60">
-              <span className="text-slate-400 block text-[9px]">INTERNAL BORE DIA</span>
-              <span className="text-cyan-400 font-bold">
-                Ø {product.specifications.boreDiameterMm}.00 mm
-              </span>
-            </div>
-            <div className="bg-slate-800/80 px-2.5 py-1.5 rounded border border-slate-700/60">
-              <span className="text-slate-400 block text-[9px]">TOTAL 3D HEIGHT (Z)</span>
-              <span className="text-emerald-400 font-bold">
-                {(options.depthScale * 35.0 + options.baseThickness).toFixed(1)} mm
-              </span>
-            </div>
-            <div className="bg-slate-800/80 px-2.5 py-1.5 rounded border border-slate-700/60">
-              <span className="text-slate-400 block text-[9px]">TOLERANCE & SPEC</span>
-              <span className="text-slate-200 font-bold">
-                {product.specifications.tolerance}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

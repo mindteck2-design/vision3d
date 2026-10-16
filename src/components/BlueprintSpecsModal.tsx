@@ -63,7 +63,11 @@ export const BlueprintSpecsModal: React.FC<BlueprintSpecsModalProps> = ({
             {/* Blueprint Preview */}
             <div className="bg-black/60 rounded-xl border border-slate-800 p-2 overflow-hidden flex items-center justify-center">
               <img
-                src={product.angles.blueprint_sheet.dataUrl}
+                src={
+                  product.angles.blueprint_sheet?.dataUrl ||
+                  product.angles.front_view?.dataUrl ||
+                  ''
+                }
                 alt="Technical Drawing"
                 className="w-full h-auto object-contain max-h-80"
               />

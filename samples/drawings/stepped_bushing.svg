@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" width="640" height="420">
+  <rect width="640" height="420" fill="#0b1329"/>
+  <text x="20" y="28" fill="#38bdf8" font-family="monospace" font-size="14" font-weight="bold">STEPPED BUSHING - UNITS: MM</text>
+  <text x="20" y="48" fill="#94a3b8" font-family="monospace" font-size="11">PART: BUSH-60-30  |  SCALE: 1:1</text>
+
+  <g transform="translate(220, 220)">
+    <rect x="-90" y="-40" width="60" height="80" fill="#e2e8f0" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="-30" y="-55" width="70" height="110" fill="#cbd5e1" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="40" y="-30" width="50" height="60" fill="#f8fafc" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="-15" y="-55" width="30" height="110" fill="#1e293b" stroke="#64748b" stroke-width="1" stroke-dasharray="4 2"/>
+    <line x1="-100" y1="0" x2="100" y2="0" stroke="#ef4444" stroke-width="1" stroke-dasharray="8 3 2 3"/>
+
+    <text x="-60" y="-55" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">Barrel  &#216; 40.00 mm</text>
+    <text x="5" y="-70" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">Outer flange  &#216; 60.00 mm</text>
+    <text x="65" y="-45" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">&#216; 30.00 mm</text>
+    <text x="5" y="80" fill="#38bdf8" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle">Height  80.00 mm</text>
+    <text x="-110" y="20" fill="#94a3b8" font-family="monospace" font-size="12" font-weight="bold">Bore  &#216; 20.00 mm</text>
+  </g>
+
+  <g transform="translate(420, 140)">
+    <text x="0" y="0" fill="#94a3b8" font-family="monospace" font-size="12">DIMENSIONS:</text>
+    <text x="0" y="24" fill="#e2e8f0" font-family="monospace" font-size="12">Outer flange  &#216; 60.00 mm</text>
+    <text x="0" y="44" fill="#e2e8f0" font-family="monospace" font-size="12">Barrel        &#216; 40.00 mm</text>
+    <text x="0" y="64" fill="#e2e8f0" font-family="monospace" font-size="12">Step          &#216; 30.00 mm</text>
+    <text x="0" y="84" fill="#e2e8f0" font-family="monospace" font-size="12">Bore          &#216; 20.00 mm</text>
+    <text x="0" y="104" fill="#e2e8f0" font-family="monospace" font-size="12">Height        80.00 mm</text>
+  </g>
+</svg>

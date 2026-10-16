@@ -1,0 +1,77 @@
+{
+  "units": "mm",
+  "part_class": "flanged_sleeve",
+  "title_block": {
+    "name": "Engineering drawing - dessin de definition",
+    "source": "Wikimedia Commons"
+  },
+  "dimensions": [
+    {
+      "value": 26,
+      "kind": "diameter",
+      "unit": "mm",
+      "text": "Ø26 flange",
+      "attachment_hint": "outer_diameter",
+      "confidence": 1.0,
+      "source": "derived"
+    },
+    {
+      "value": 22,
+      "kind": "diameter",
+      "unit": "mm",
+      "text": "Ø22 body",
+      "attachment_hint": "barrel_diameter",
+      "confidence": 1.0,
+      "source": "derived"
+    },
+    {
+      "value": 19,
+      "kind": "diameter",
+      "unit": "mm",
+      "text": "Ø19 bore large",
+      "attachment_hint": "bore_large",
+      "confidence": 1.0,
+      "source": "derived"
+    },
+    {
+      "value": 12,
+      "kind": "diameter",
+      "unit": "mm",
+      "text": "Ø12 bore small",
+      "attachment_hint": "bore_small",
+      "confidence": 1.0,
+      "source": "derived"
+    },
+    {
+      "value": 26,
+      "kind": "linear",
+      "unit": "mm",
+      "text": "26 length",
+      "attachment_hint": "total_height",
+      "confidence": 1.0,
+      "source": "derived"
+    },
+    {
+      "value": 3,
+      "kind": "linear",
+      "unit": "mm",
+      "text": "3 flange thickness",
+      "attachment_hint": "flange_thickness",
+      "confidence": 1.0,
+      "source": "derived"
+    },
+    {
+      "value": 22,
+      "kind": "linear",
+      "unit": "mm",
+      "text": "22 bore depth",
+      "attachment_hint": "bore_depth",
+      "confidence": 1.0,
+      "source": "derived"
+    }
+  ],
+  "features": [],
+  "views": [],
+  "uncertainties": [],
+  "assumptions": []
+}

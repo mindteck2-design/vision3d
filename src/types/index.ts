@@ -48,7 +48,8 @@ export interface ManufacturingProduct {
     tolerance: string;
     surfaceFinish: string;
   };
-  angles: Record<ProductAngleKey, ProductAngleInfo>;
+  /** Catalog products fill all views; uploads may only have blueprint_sheet */
+  angles: Partial<Record<ProductAngleKey, ProductAngleInfo>>;
 }
 
 export interface ProcessOptions {
@@ -94,3 +95,42 @@ export interface CVResult {
   stats: CVStats;
   heightfield: number[][]; // [y][x] normalized 0..1
 }
+
+/** Parametric CAD reconstruction result from Python service */
+export type ReconstructionStatus =
+  | 'complete'
+  | 'partial'
+  | 'incomplete'
+  | 'unsupported';
+
+export interface CadUncertainty {
+  code: string;
+  message: string;
+  severity: string;
+}
+
+export interface CadAssumption {
+  code: string;
+  message: string;
+  value?: unknown;
+}
+
+export interface CadReconstruction {
+  status: ReconstructionStatus;
+  stlBase64?: string | null;
+  stepBase64?: string | null;
+  specifications: Record<string, unknown>;
+  pipelineSteps: string[];
+  processingMs: number;
+  uncertainties: CadUncertainty[];
+  assumptions: CadAssumption[];
+  validation?: {
+    ok: boolean;
+    watertight: boolean;
+    volume_mm3: number;
+    bbox_mm: Record<string, number>;
+    dim_checks: Array<Record<string, unknown>>;
+    messages: string[];
+  } | null;
+  drawingIr?: Record<string, unknown>;
+  mode: 'cad' | 'relief';}

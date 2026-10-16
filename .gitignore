@@ -1,8 +1,40 @@
+# Dependencies
 node_modules/
+.bun/
+
+# Build / output
 build/
 dist/
 coverage/
-.DS_Store
-*.log
+server.js
+
+# Env & secrets
 .env*
 !.env.example
+
+# Runtime (vision3d.sh)
+.run/
+*.log
+*.pid
+
+# Python
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg
+.Python
+
+# CAD temp exports
+**/vision3d_cad_*/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

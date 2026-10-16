@@ -10,11 +10,26 @@ View your app in AI Studio: https://ai.studio/apps/228fa1a9-3794-4e5d-916c-fbcc6
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js, Python 3 (for CAD service)
 
+1. Install Node deps: `npm install`
+2. Set up CAD service once:
+   ```bash
+   cd python/cad_service && python3 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+   cd ../..
+   ```
+3. Start UI + CAD service (auto-creates `.venv` / installs deps if missing):
+   ```bash
+   ./vision3d.sh start
+   ```
+4. Stop both:
+   ```bash
+   ./vision3d.sh stop
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Uses **bun** for the UI and Python `.venv` + `uvicorn` for CAD.
+
+- UI: http://127.0.0.1:3000  
+- CAD health: http://127.0.0.1:8000/health  
+- Logs: `.run/ui.log`, `.run/cad.log`
